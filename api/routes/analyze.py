@@ -4,6 +4,7 @@ from db.models import Company, Report
 from db.database import SessionLocal
 from sqlalchemy.orm import Session
 from datetime import datetime
+import json
 
 router = APIRouter()
 
@@ -45,13 +46,13 @@ def analyze_company(payload: AnalyzeRequest):
     db.refresh(company)
 
     report = Report(
-        company_id=company.id,
-        found_profiles=str(found_profiles),
-        missing_platforms=str(missing),
-        post_ideas=str(post_ideas),
-        seo_blog=str(seo_blog),
-        created_at=datetime.utcnow()
-    )
+            company_id=company.id,
+            found_profiles=json.dumps(found_profiles),
+            missing_platforms=json.dumps(missing),
+            post_ideas=json.dumps(post_ideas),
+            seo_blog=json.dumps(seo_blog),
+            created_at=datetime.utcnow()
+    )    
     db.add(report)
     db.commit()
 
