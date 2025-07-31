@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 import json
 
+from services.social_discovery import discover_social_profiles
+
 router = APIRouter()
 
 class AnalyzeRequest(BaseModel):
@@ -17,48 +19,42 @@ class AnalyzeRequest(BaseModel):
 @router.post("/analyze")
 def analyze_company(payload: AnalyzeRequest):
     db: Session = SessionLocal()
+    try:
+        # Run actual discovery logic
+        discovery_data = discover_social_profiles(payload.domain)
+        found_profiles = discovery_data["found"]
+        missing = discovery_data["missing"]
 
-    # Simulated response (replace with real logic later)
-    found_profiles = {
-        "linkedin": f"https://linkedin.com/company/{payload.company_name}",
-        "youtube": f"https://youtube.com/@{payload.company_name}"
-    }
+        # Save company
+        company = Company(
+            name=payload.company_name,
+            domain=payload.domain,
+            scope=payload.scope,
+            category=payload.category
+        )
+        db.add(company)
+        db.commit()
+        db.refresh(company)
 
-    missing = ["instagram", "tiktok"]  # placeholder
-    post_ideas = [
-        "🎉 Launch your new collection with a behind-the-scenes reel",
-        "💄 Share styling tips for teenagers"
-    ]
-    seo_blog = {
-        "title": "Top 5 Fashion Trends for Eid 2025",
-        "meta": "Explore trendy styles for the upcoming season",
-        "keywords": ["eid fashion", "pakistani style", "2025 trends"]
-    }
-
-    company = Company(
-        name=payload.company_name,
-        domain=payload.domain,
-        scope=payload.scope,
-        category=payload.category
-    )
-    db.add(company)
-    db.commit()
-    db.refresh(company)
-
-    report = Report(
+        # Save report (only discovery-related fields)
+        report = Report(
             company_id=company.id,
             found_profiles=json.dumps(found_profiles),
             missing_platforms=json.dumps(missing),
-            post_ideas=json.dumps(post_ideas),
-            seo_blog=json.dumps(seo_blog),
+            post_ideas=json.dumps([]),
+            seo_blog=json.dumps({}),
             created_at=datetime.utcnow()
-    )    
-    db.add(report)
-    db.commit()
+        )
+        db.add(report)
+        db.commit()
 
-    return {
-        "found_profiles": found_profiles,
-        "missing_platforms": missing,
-        "post_ideas": post_ideas,
-        "seo_suggestions": seo_blog
-    }
+        return {
+            "found_profiles": found_profiles,
+            "missing_platforms": missing
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+    finally:
+        db.close()

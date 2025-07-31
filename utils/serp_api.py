@@ -1,35 +1,39 @@
+# utils/serp_api.py
+
 import os
 import requests
+from dotenv import load_dotenv
 
-SERP_API_KEY = os.getenv("SERPAPI_API_KEY")
+load_dotenv()
 
-def search_social_links(domain: str):
-    if not SERP_API_KEY:
+def search_social_links(domain):
+    api_key = os.getenv("SERPAPI_API_KEY")
+    if not api_key:
         raise ValueError("SerpAPI key is missing. Please set SERPAPI_API_KEY in your environment.")
 
-    query = f"site:{domain}"
-    platforms = ["facebook.com", "linkedin.com", "instagram.com", "twitter.com", "tiktok.com", "youtube.com"]
-    results = {}
+    query = f"{domain} site:linkedin.com OR site:facebook.com OR site:instagram.com OR site:twitter.com OR site:tiktok.com OR site:youtube.com"
+    params = {
+        "q": query,
+        "engine": "google",
+        "api_key": api_key,
+        "num": 10
+    }
 
-    for platform in platforms:
-        url = "https://serpapi.com/search"
-        params = {
-            "q": f"{query} site:{platform}",
-            "api_key": SERP_API_KEY,
-            "engine": "google"
-        }
+    print(f"🔍 Querying SerpAPI for: {query}")
+    response = requests.get("https://serpapi.com/search", params=params)
 
-        try:
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            link = data['organic_results'][0]['link']
-            results[platform.split('.')[0]] = link
-        except requests.exceptions.RequestException as e:
-            print(f"[ERROR] SerpAPI request failed for {platform}: {e}")
-        except (KeyError, IndexError):
-            print(f"[INFO] No result found for {platform}")
-        except Exception as e:
-            print(f"[ERROR] Unexpected error for {platform}: {e}")
+    if response.status_code != 200:
+        raise Exception(f"SerpAPI request failed with status {response.status_code}: {response.text}")
 
-    return results
+    data = response.json()
+
+    found = {}
+    if "organic_results" in data:
+        for result in data["organic_results"]:
+            link = result.get("link", "")
+            for platform in ["facebook", "linkedin", "instagram", "twitter", "tiktok", "youtube"]:
+                if platform in link and platform not in found:
+                    found[platform] = link
+
+    print("✅ Found social links:", found)
+    return found

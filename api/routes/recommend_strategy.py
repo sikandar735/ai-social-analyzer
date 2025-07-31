@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from services.recommendation import generate_strategy_recommendations
+from services.recommendations import generate_strategy_recommendations
 
 router = APIRouter()
 

@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from services.social_discovery import search_google
-from database import get_db
-from models import Company, Discovery
+from services.social_discovery import discover_social_profiles
+
+#from services.social_discovery import search_google
+from db.database import get_db
+from db.models import Company, Discovery
 from typing import List
 from pydantic import BaseModel
 from datetime import datetime
@@ -28,7 +30,9 @@ def discover_profiles(company_id: int, db: Session = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Company not found")
 
         # Step 2: Use the domain to search
-        discovery_results = search_google(company.domain)
+        #discovery_results = search_google(company.domain)
+        discovery_results = discover_social_profiles(company.domain)
+
 
         # Step 3: Save discovery in DB
         discovery = Discovery(
